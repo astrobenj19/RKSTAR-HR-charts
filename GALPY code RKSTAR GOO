@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from galpy.orbit import Orbit
+from galpy.potential import MWPotential2014
+
+df = pd.read_csv('Subdwarf_Candidates.5offset.csv')
+
+df = df.dropna(subset=['RKS', 'RA 2000.0_d', 'DEC 2000.0_d', 'muRA', 'muDEC', 'pi', 'RV']).copy()
+
+df['dist_kpc'] = 1.0 / df['pi']  
+
+
+# Integration time in Gyr
+ts = np.linspace(0, -5, 1001)   # integrate 5 Gyr backward
+
+results = []
+
+for i, star in df.iterrows():
+
+    o = Orbit(
+        [
+            star['RA 2000.0_d'],
+            star['DEC 2000.0_d'],
+            star['dist_kpc'],
+            star['muRA'],
+            star['muDEC'],
+            star['RV']
+        ],
+        radec=True,
+        ro=8.0,
+        vo=220.0,
+        solarmotion='schoenrich'
+    )
+
+    o.integrate(ts, MWPotential2014)
+
+    results.append({
+        'RKS': star['RKS'],
+        'RA_2000.0_d': star['RA 2000.0_d'],
+        'DEC_2000.0_d': star['DEC 2000.0_d'],
+        'dist_kpc': star['dist_kpc'],
+        'R_now_kpc': o.R(),
+        'z_now_kpc': o.z(),
+        'ecc': o.e(),
+        'zmax_kpc': o.zmax(),
+        'rperi_kpc': o.rperi(),
+        'rap_kpc': o.rap(),
+        'Lz': o.Lz(),
+        'Energy': o.E()
+    })
+
+orbit_results = pd.DataFrame(results)
+
+orbit_results.to_csv('RKSTAR_galpy_orbit_results.csv', index=False)
+
+orbit_results.head()
